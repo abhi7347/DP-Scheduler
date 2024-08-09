@@ -1,0 +1,102 @@
+
+#scheduler-table {
+  margin-right: 35px;
+}
+
+mat-form-field {
+  width: 100%; /* Make the input field take full width within the column */
+  max-width: 100px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.col-4, .col-8 {
+  padding: 15px; /* Add some padding for better spacing */
+}
+
+
+#left-calender{
+  background-color: white;
+  margin: 15px 0 0 56px;
+  padding: 0;
+  width: 25%;
+
+}
+
+.whole-page{
+  margin-top: 50px;
+}
+
+.col-4 {
+  flex: 0 0 auto;
+  width: 30.333333%;
+}
+
+
+/* Style for the tree-node <li> elements */
+.location{
+  margin: 0;
+  padding: 0;
+}
+
+.location-title{
+  background-color: rgb(47, 47, 105);
+}
+
+.location-title p{
+  color: white;
+  margin: 0 0 0 26px;
+  padding: 6px;
+  font-weight: bolder;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-node {
+  margin-bottom: 10px;
+  position: relative;
+  padding-left: 30px; /* Space for the toggle button */
+}
+
+/* Style for the toggle button */
+.toggle-button {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+/* Hide children by default */
+.children.hidden {
+  display: none;
+}
+
+/* Style for child nodes */
+.children {
+  margin-left: 20px;
+}
+
+/* Style for checkboxes and labels */
+input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+input[type="checkbox"]:checked + label {
+  font-weight: bold;
+}
+
+
+#dp_1723192113317122546 .calendar_default_main > div:first-child {
+  display: none;
+}
