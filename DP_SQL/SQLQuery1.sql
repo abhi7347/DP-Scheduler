@@ -36,7 +36,7 @@ CREATE TABLE DP_Provider_Locations (
 
 CREATE TABLE DP_Availability (
     AvailabilityId INT PRIMARY KEY IDENTITY(1,1),
-	ProviderId int,
+	  ProviderId int,
     [DayOfWeek] VARCHAR(12) NOT NULL,
     StartTime TIME NOT NULL,
     EndTime TIME NOT NULL,	
@@ -128,3 +128,40 @@ INSERT INTO DP_Appointments (ProviderId, PatientId, AppointmentDate, StartTime, 
 (3, 4, '2024-08-18', '14:00', '14:30', GETDATE(), GETDATE()),
 (2, 5, '2024-08-19', '15:00', '15:30', GETDATE(), GETDATE());
 Select * from DP_Appointments
+
+
+--------------------- Stored Procedure ---------------------------
+CREATE PROCEDURE USP_DayPilot_Procedure
+    @DayOfWeek VARCHAR(12),
+    @LocationIds VARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Declare a table variable to store the split location IDs
+    DECLARE @LocationIdTable TABLE (LocationId INT);
+
+    -- Split the comma-separated list of location IDs into table rows
+    INSERT INTO @LocationIdTable (LocationId)
+    SELECT CAST(value AS INT)  -- Ensure the split values are cast to INT
+    FROM STRING_SPLIT(@LocationIds, ',');
+
+    -- Retrieve providers based on the day of the week and location IDs
+    -- Ensure that the providers are not busy with another appointment on that day
+    SELECT DISTINCT 
+        p.ProviderId, 
+        p.FirstName, 
+        p.LastName, 
+        p.Specialty, 
+        p.PhoneNo, 
+        p.Email
+    FROM DP_Providers p
+    INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
+    INNER JOIN DP_Availability a ON p.ProviderId = a.ProviderId
+    WHERE a.DayOfWeek = @DayOfWeek
+      AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
+    ORDER BY p.ProviderId;
+END;
+
+
+ 
