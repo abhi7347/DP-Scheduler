@@ -91,25 +91,78 @@ VALUES
 Select * from DP_Locations
 
 
+
 INSERT INTO DP_Provider_Locations (ProviderId, LocationId, CreatedAt, ModifiedAt)
 VALUES 
+-- Providers assigned to Location 1
 (1, 1, GETDATE(), GETDATE()), 
-(2, 2, GETDATE(), GETDATE()), 
-(3, 3, GETDATE(), GETDATE()), 
-(4, 4, GETDATE(), GETDATE()),
+(2, 1, GETDATE(), GETDATE()), 
+(5, 1, GETDATE(), GETDATE()),
+
+-- Providers assigned to Location 2
+(3, 2, GETDATE(), GETDATE()), 
+(1, 2, GETDATE(), GETDATE()), 
+(5, 2, GETDATE(), GETDATE()),
+
+-- Providers assigned to Location 3
+(2, 3, GETDATE(), GETDATE()), 
+(4, 3, GETDATE(), GETDATE()), 
+(3, 3, GETDATE(), GETDATE()),
+
+-- Providers assigned to Location 4
+(4, 4, GETDATE(), GETDATE()), 
+(5, 4, GETDATE(), GETDATE()), 
+(2, 4, GETDATE(), GETDATE()),
+
+-- Providers assigned to Location 5
+(3, 5, GETDATE(), GETDATE()), 
+(4, 5, GETDATE(), GETDATE()), 
 (5, 5, GETDATE(), GETDATE());
+
+
 Select * from DP_Provider_Locations
+delete from DP_Provider_Locations;
 
 
 INSERT INTO DP_Availability (ProviderId, DayOfWeek, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
+-- Provider 1
 (1, 'Monday', '08:00', '12:00', GETDATE(), GETDATE()),
-(1, 'Monday', '13:00', '17:00', GETDATE(), GETDATE()),
+(1, 'Monday', '03:00', '06:00', GETDATE(), GETDATE()),
+(1, 'Tuesday', '08:00', '12:00', GETDATE(), GETDATE()),
+(1, 'Wednesday', '08:00', '12:00', GETDATE(), GETDATE()),
+(1, 'Thursday', '08:00', '12:00', GETDATE(), GETDATE()),
+(1, 'Friday', '08:00', '12:00', GETDATE(), GETDATE()),
+(1, 'Saturday', '09:00', '13:00', GETDATE(), GETDATE()),
+
+-- Provider 2
+(2, 'Monday', '09:00', '15:00', GETDATE(), GETDATE()), 
 (2, 'Tuesday', '09:00', '15:00', GETDATE(), GETDATE()),
 (2, 'Wednesday', '10:00', '14:00', GETDATE(), GETDATE()),
+(2, 'Thursday', '10:00', '14:00', GETDATE(), GETDATE()),
+(2, 'Friday', '09:00', '15:00', GETDATE(), GETDATE()),
+
+-- Provider 3
+(3, 'Monday', '10:00', '14:00', GETDATE(), GETDATE()),
+(3, 'Tuesday', '11:00', '18:00', GETDATE(), GETDATE()), 
+(3, 'Wednesday', '11:00', '18:00', GETDATE(), GETDATE()),
 (3, 'Thursday', '11:00', '18:00', GETDATE(), GETDATE()),
 (3, 'Friday', '08:30', '12:30', GETDATE(), GETDATE()),
-(1, 'Saturday', '09:00', '13:00', GETDATE(), GETDATE());
+
+-- Provider 4
+(4, 'Monday', '08:00', '12:00', GETDATE(), GETDATE()),
+(4, 'Wednesday', '09:00', '13:00', GETDATE(), GETDATE()),
+(4, 'Thursday', '08:00', '12:00', GETDATE(), GETDATE()),
+(4, 'Saturday', '10:00', '14:00', GETDATE(), GETDATE()),
+
+-- Provider 5
+(5, 'Tuesday', '10:00', '14:00', GETDATE(), GETDATE()),
+(5, 'Thursday', '10:00', '14:00', GETDATE(), GETDATE()), 
+(5, 'Friday', '11:30', '15:30', GETDATE(), GETDATE()),
+(5, 'Saturday', '10:00', '14:00', GETDATE(), GETDATE());
+
+
 Select * from DP_Availability
+delete from DP_Availability;
 
 
 INSERT INTO DP_Patient ([Name], Gender, Age, PhoneNo, CreatedAt, ModifiedAt) VALUES
@@ -131,9 +184,11 @@ Select * from DP_Appointments
 
 
 --------------------- Stored Procedure ---------------------------
-CREATE PROCEDURE USP_DayPilot_Procedure
-    @DayOfWeek VARCHAR(12),
-    @LocationIds VARCHAR(MAX)
+EXEC USP_DayPilot_Procedure @DayOfWeek=null,@LocationIds=null
+
+ALTER PROCEDURE USP_DayPilot_Procedure
+    @DayOfWeek VARCHAR(12) null,
+    @LocationIds VARCHAR(MAX) null
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -143,13 +198,12 @@ BEGIN
 
     -- Split the comma-separated list of location IDs into table rows
     INSERT INTO @LocationIdTable (LocationId)
-    SELECT CAST(value AS INT)  -- Ensure the split values are cast to INT
+    SELECT CAST(value AS INT)
     FROM STRING_SPLIT(@LocationIds, ',');
 
     -- Retrieve providers based on the day of the week and location IDs
-    -- Ensure that the providers are not busy with another appointment on that day
     SELECT DISTINCT 
-        p.ProviderId, 
+        p.ProviderId,
         p.FirstName, 
         p.LastName, 
         p.Specialty, 
@@ -161,7 +215,25 @@ BEGIN
     WHERE a.DayOfWeek = @DayOfWeek
       AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
     ORDER BY p.ProviderId;
+
+    -- Retrieve providers with their availability, excluding busy slots
+        SELECT DISTINCT 
+            p.ProviderId,
+            p.FirstName, 
+            p.LastName, 
+            p.Specialty, 
+            p.PhoneNo, 
+            p.Email,
+            a.StartTime,       
+            a.EndTime   
+        FROM DP_Providers p
+        INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
+        INNER JOIN DP_Availability a ON p.ProviderId = a.ProviderId
+        LEFT JOIN DP_Appointments ap ON p.ProviderId = ap.ProviderId
+            AND a.StartTime < ap.EndTime
+            AND a.EndTime > ap.StartTime
+        WHERE a.DayOfWeek = @DayOfWeek
+          AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
+          AND ap.ProviderId IS NULL -- Only include availability slots with no overlapping appointments
+        ORDER BY p.ProviderId, a.StartTime; -- Ordering by provider and availability time    
 END;
-
-
- 

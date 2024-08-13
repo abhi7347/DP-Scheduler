@@ -11,7 +11,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { LocationService } from '../services/location.service';
 import { ToastrService } from 'ngx-toastr';
 
-
 interface LocationNode {
   name: string;
   children?: LocationNode[];
@@ -36,9 +35,7 @@ export class DayCalendarComponent implements OnInit {
   selectedDate: Date | null = null;
   selectedDayOfWeek: string = '';
 
-
-
-  constructor(private locationService: LocationService, private toastr:ToastrService) { }
+  constructor(private locationService: LocationService, private toastr: ToastrService) { }
 
   events: any[] = [
     { id: '1', text: 'Event 1', start: '2024-08-08T10:00:00', end: '2024-08-08T12:00:00' },
@@ -51,13 +48,10 @@ export class DayCalendarComponent implements OnInit {
     columns: this.Providers
   };
 
-
   ngOnInit(): void {
-    this.config.events = this.events; 
     this.selectedDate = new Date(); // Set default date to today
     this.selectedDayOfWeek = this.getDayOfWeek(this.selectedDate); // Get day of week from the date
-    this.GetLocations();
-    alert(this.selectedDayOfWeek);
+    this.GetLocations(); // Fetch locations and handle the first location being checked
   }
 
   getDayOfWeek(date: Date): string {
@@ -65,7 +59,6 @@ export class DayCalendarComponent implements OnInit {
     return new Intl.DateTimeFormat('en-US', options).format(date);
   }
 
-  
   // Method to handle checkbox change
   onParentCheckboxChange(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -79,11 +72,12 @@ export class DayCalendarComponent implements OnInit {
         checkbox.checked = isChecked;
       });
     }
-    this.fetchProviders();
+
+    this.fetchProviders(); // Fetch providers whenever a parent checkbox is changed
   }
 
-   // Method to toggle children visibility
-   toggleChildren(event: Event) {
+  // Method to toggle children visibility
+  toggleChildren(event: Event) {
     const button = event.target as HTMLButtonElement;
     const parentLi = button.closest('li');
     if (parentLi) {
@@ -97,56 +91,60 @@ export class DayCalendarComponent implements OnInit {
 
   GetLocations(): void {
     this.locationService.GetLocations().subscribe({
-      next:(res)=>{
-        this.Locations = res
+      next: (res) => {
+        this.Locations = res;
+
         // Automatically check the first location
         if (this.Locations.length > 0) {
           this.Locations[0].checked = true;
-          this.fetchProviders(); // Fetch providers with default settings
+          this.fetchProviders(); // Fetch providers for the default selected day and location
         }
+
         console.log(this.Locations);
         this.toastr.success("Locations fetched Successfully!");
       },
-      error:(err) =>{
-        this.toastr.error("locations error!");
+      error: (err) => {
+        this.toastr.error("Error fetching locations!");
       }
-    })
+    });
   }
 
-
   fetchProviders(): void {
-    if (this.selectedDayOfWeek) {
-      const selectedLocations = this.getCheckedLocationIds();
+    const selectedLocations = this.getCheckedLocationIds();
+    const allLocationIds = this.Locations.map(location => location.LocationId);
+    
+    // Fetch providers only for checked locations
+    if (selectedLocations.length > 0 && this.selectedDayOfWeek) {
       this.locationService.ProvidersByLocations(this.selectedDayOfWeek, selectedLocations).subscribe({
         next: (data: any[]) => {
-          console.log('Providers:', data);
-          this.Providers = data;
+          console.log('Providers for checked locations:', data);
           this.Providers = data.map(provider => ({
-            id: provider.ProviderId.toString(), // Ensure ID is a string
-            name: `${provider.FirstName} ${provider.LastName}` // Display name as 'First Last'
+            id: provider.ProviderId, // Ensure ID is a string
+            name: `${provider.FirstName} ${provider.LastName}`, // Display name as 'First Last'
           }));
           // Update DayPilot calendar configuration
           this.config.columns = this.Providers;
+
           // Optionally refresh the calendar view
           if (this.calendar) {
-            this.calendar.control.update();          
+            this.calendar.control.update();
           }
         },
         error: (error) => {
           console.error('Error fetching providers:', error);
         }
       });
-    }
-    else {
+    } else {
       // Optionally clear the resources or handle the case of no locations selected
       this.Providers = [];
+      this.config.columns = this.Providers;
       if (this.calendar) {
         this.calendar.control.update(); // Refresh the calendar to reflect changes
       }
     }
   }
 
-   getCheckedLocationIds(): number[] {
+  getCheckedLocationIds(): number[] {
     const checkedLocationIds: number[] = [];
     this.Locations.forEach(location => {
       if (location.checked) {
@@ -155,5 +153,4 @@ export class DayCalendarComponent implements OnInit {
     });
     return checkedLocationIds;
   }
-
 }

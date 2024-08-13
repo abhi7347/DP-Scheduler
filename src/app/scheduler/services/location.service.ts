@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import {ProvidersByLocation, locationAPIURL} from '../../../Environvent/ApiURL' 
+import {ProvidersByLocation, locationAPIURL, ProvidersByLocationInToggel } from '../../../Environvent/ApiURL' 
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -9,6 +9,7 @@ import { Observable } from 'rxjs';
 export class LocationService {
   private apiUrl = locationAPIURL.apiUrl;
   private ProvidersURL = ProvidersByLocation.apiUrl
+  private providersInToggle = ProvidersByLocationInToggel.apiUrl
 
   constructor(private http: HttpClient ) { }
 
@@ -25,5 +26,10 @@ export class LocationService {
       params = params.append('locationIds', id.toString());
     });    
     return this.http.get<any>(this.ProvidersURL, { params });
+  }
+
+  //Providers by locations in toggle
+  providerLocationInToggle(locationId:number):Observable<any>{
+    return this.http.get<any[]>(`${this.providersInToggle}?LocationId=${locationId}`)
   }
 }

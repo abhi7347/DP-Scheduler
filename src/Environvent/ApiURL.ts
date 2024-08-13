@@ -9,3 +9,9 @@ export const locationAPIURL = {
   export const ProvidersByLocation = {
     apiUrl: 'https://localhost:7070/api/DPSchedulerContoller/ProvidersByLocation'
   };
+
+
+ // Providers by Locations in Toggle
+ export const ProvidersByLocationInToggel = {
+  apiUrl: 'https://localhost:7070/api/DPSchedulerContoller/ProvidersInToggleLoacion'
+};
