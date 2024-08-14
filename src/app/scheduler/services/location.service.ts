@@ -29,7 +29,7 @@ export class LocationService {
   }
 
   //Providers by locations in toggle
-  providerLocationInToggle(locationId:number):Observable<any>{
-    return this.http.get<any[]>(`${this.providersInToggle}?LocationId=${locationId}`)
+  providerLocationInToggle():Observable<any>{
+    return this.http.get<any[]>(this.providersInToggle)
   }
 }

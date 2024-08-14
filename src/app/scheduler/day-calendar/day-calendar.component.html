@@ -16,13 +16,12 @@
                         (change)="onParentCheckboxChange($event)">
                     <label for="parent1">{{location.LocationName}}</label>
                     <ul class="children hidden">
-                        <li *ngFor="let provider of Providers">
-                            <input type="checkbox" [id]="'child' + provider.id" class="child-checkbox">
-                            <label [for]="'child' + provider.id">{{ provider.name }}</label>
-                          </li>                    
-                    </ul>
+                        <li *ngFor="let provider of ProvidersGroupedByLocation">
+                          <input type="checkbox" [id]="'child' + provider.FirstName" class="child-checkbox">
+                          <label [for]="'child' + provider.FirstName">{{ provider.FirstName }}</label>
+                        </li>
+                      </ul>
                 </li>
-                
             </ul>
         </div>
         <div class="providers-sec">
@@ -85,6 +84,5 @@
         <div class="calendar-header">
             <daypilot-calendar [config]="config" #calendar></daypilot-calendar>
         </div>
-        
     </div>
 </div>
