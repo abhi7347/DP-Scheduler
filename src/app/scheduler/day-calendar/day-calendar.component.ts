@@ -34,7 +34,7 @@ export class DayCalendarComponent implements OnInit {
   Providers: any[] = []
   selectedDate: Date | null = null;
   selectedDayOfWeek: string = '';
-  ProvidersGroupedByLocation:   any[]  = [];
+  ProvidersGroupedByLocation: any[] = [];
   selectedColor: string = '#2e78d6'; // Default color
 
   colorOptions: string[] = [
@@ -47,67 +47,62 @@ export class DayCalendarComponent implements OnInit {
 
   constructor(private locationService: LocationService, private toastr: ToastrService) { }
 
-  events: any[] = [
-    { id: '1', text: 'Event 1', start: '2024-08-08T10:00:00', end: '2024-08-08T12:00:00' },
-    { id: '2', text: 'Event 2', start: '2024-08-08T12:00:00', end: '2024-08-08T14:00:00' }
-  ];
-
   config: DayPilot.CalendarConfig = {
     viewType: "Resources",
     cellHeight: 40,
     // columns: this.Providers,
     onBeforeCellRender: (args) => {
       this.customizeCell(args);
-        
+
     },
-    contextMenu: new DayPilot.Menu({
-      items: [
-        {
-          text: "Edit...",
-          onClick: async args => {
-            const data = args.source.data;
-            const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
+    // contextMenu: new DayPilot.Menu({
+    //   items: [
+    //     {
+    //       text: "Edit...",
+    //       onClick: async args => {
+    //         const data = args.source.data;
+    //         const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
 
-            if (modal.canceled) {
-              return;
-            }
+    //         if (modal.canceled) {
+    //           return;
+    //         }
 
-            data.text = modal.result;
-            this.updateEventColor(data);
-            this.calendar.control.events.update(data);
-          }
-        },
-        {
-          text: "Delete",
-          onClick: args => {
-            this.calendar.control.events.remove(args.source);
-          }
-        }
-      ]
-    }),
+    //         data.text = modal.result;
+    //         this.updateEventColor(data);
+    //         this.calendar.control.events.update(data);
+    //       }
+    //     },
+    //     {
+    //       text: "Delete",
+    //       onClick: args => {
+    //         this.calendar.control.events.remove(args.source);
+    //       }
+    //     }
+    //   ]
+    // }),
     onTimeRangeSelected: async args => {
       // Find the provider associated with the selected cell
       const provider = this.Providers.find(p => p.id === args.resource);
-    
+
       if (!provider) {
         this.toastr.error("No provider associated with this slot.");
         return;
       }
-    
+
       const cellStartTime = new Date(`1970-01-01T${args.start.toString().substring(11, 19)}`);
       const cellEndTime = new Date(`1970-01-01T${args.end.toString().substring(11, 19)}`);
       const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
       const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
-    
+
       // Check if the selected time range is within the provider's availability
       if (cellStartTime >= providerStartTime && cellEndTime <= providerEndTime) {
         // Prompt the user to enter event details
         const modal = await DayPilot.Modal.prompt("Create a new event:", "Event 1");
-    
+
         if (modal.canceled) {
           return;
         }
-    
+
         // Add the new event to the calendar
         this.calendar.control.events.add({
           start: args.start,
@@ -129,28 +124,28 @@ export class DayCalendarComponent implements OnInit {
     columns: []
   };
 
-  customizeCell(args:any){
+  customizeCell(args: any) {
     const provider = this.Providers.find(p => p.id === args.cell.resource);
-        if (provider) {
-          const cellStartTime = new Date(`1970-01-01T${args.cell.start.toString().substring(11, 19)}`);
-          const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
-          const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
-  
-          // Check if the cell's start time is within the provider's availability range
-          if (cellStartTime >= providerStartTime && cellStartTime < providerEndTime) {
-              args.cell.properties.backColor = "#ffffff"; // Light green for available time slots
-          } else {
-              args.cell.properties.backColor = "#E8E8E8"; // Light grey for unavailable time slots
-              args.cell.properties.disabled = true; // Optionally disable the cell
-          }
+    if (provider) {
+      const cellStartTime = new Date(`1970-01-01T${args.cell.start.toString().substring(11, 19)}`);
+      const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
+      const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
+
+      // Check if the cell's start time is within the provider's availability range
+      if (cellStartTime >= providerStartTime && cellStartTime < providerEndTime) {
+        args.cell.properties.backColor = "#ffffff"; // Light green for available time slots
       } else {
-          args.cell.properties.backColor = "#E8E8E8"; // Default white background for cells without a provider
-          args.cell.properties.disabled = true; // Optionally disable the cell
+        args.cell.properties.backColor = "#E8E8E8"; // Light grey for unavailable time slots
+        args.cell.properties.disabled = true; // Optionally disable the cell
       }
+    } else {
+      args.cell.properties.backColor = "#E8E8E8"; // Default white background for cells without a provider
+      args.cell.properties.disabled = true; // Optionally disable the cell
+    }
   }
 
 
-  
+
 
   ngOnInit(): void {
     this.selectedDate = new Date(); // Set default date to today
@@ -261,38 +256,34 @@ export class DayCalendarComponent implements OnInit {
     return checkedLocationIds;
   }
 
-// ///////////////////////////////////////////////
+  /////////////////////////////////////////////////
 
-async onEventClick(args: any) {
-  // Convert color options to ModalFormOption[] with 'id', 'value', and 'text'
-  const colorOptions: { id: string; value: string; text: string }[] = this.colorOptions.map(color => ({
-    id: color, // id can be the same as value in this case
-    value: color,
-    text: color
-  }));
-
-  const form: DayPilot.ModalFormItem[] = [
-    { name: "Text", id: "text" },
-    { name: "Start", id: "start", dateFormat: "MM/dd/yyyy", type: "datetime" },
-    { name: "End", id: "end", dateFormat: "MM/dd/yyyy", type: "datetime" },
-    { name: "Color", id: "backColor", type: "select", options: colorOptions }
-  ];
-
-  const data = args.e.data;
-
-  const modal = await DayPilot.Modal.form(form, data);
-
-  if (modal.canceled) {
-    return;
+  async onEventClick(args: any) {
+    // Convert color options to ModalFormOption[] with 'id', 'value', and 'text'
+    const colorOptions: { id: string; value: string; text: string }[] = this.colorOptions.map(color => ({
+      id: color, // id can be the same as value in this case
+      value: color,
+      text: color
+    }));
+  
+    const form: DayPilot.ModalFormItem[] = [
+      { name: "Text", id: "text", type: "text" }, // Event name
+      { name: "Start Time", id: "start", type: "datetime", dateFormat: "HH:mm:ss" }, // Start time
+      { name: "End Time", id: "end", type: "datetime", dateFormat: "HH:mm:ss" }, // End time
+      { name: "Color", id: "backColor", type: "select", options: colorOptions } // Color
+    ];
+  
+    const data = args.e.data;
+  
+    const modal = await DayPilot.Modal.form(form, data);
+  
+    if (modal.canceled) {
+      return;
+    }
+  
+    const dp = args.control;
+  
+    dp.events.update(modal.result);
   }
-
-  const dp = args.control;
-
-  dp.events.update(modal.result);
-}
-
-updateEventColor(event: any) {
-  event.barColor = this.selectedColor;
-}
 
 }
