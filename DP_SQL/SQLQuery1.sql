@@ -12,7 +12,7 @@ CREATE TABLE DP_Providers (
 	Gender varchar(10),
 	NPI varchar(50)
 );
-
+select * from DP_Provider_Locations
 CREATE TABLE DP_Locations (
     LocationId INT PRIMARY KEY IDENTITY(1,1),
     LocationName VARCHAR(255) NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE DP_Patient(
 	[Name] varchar(50),
 	Gender varchar(20),
 	Age int,
-    PhoneNo VARCHAR(20),
+  PhoneNo VARCHAR(20),
 	CreatedAt datetime,
 	ModifiedAt datetime,
 );
@@ -60,16 +60,16 @@ CREATE TABLE DP_Patient(
 CREATE TABLE DP_Appointments(
 	AppointmentId INT PRIMARY KEY IDENTITY(1,1),
 	ProviderId int,
-	PatientId int,
+  EventId int ,
+  EventName varchar(100),
 	AppointmentDate datetime,
 	StartTime TIME NOT NULL,	
-	EndTime TIME NOT NULL,	
+	EndTime TIME NOT NULL,
+  Color varchar(50),
 	CreatedAt datetime,
 	ModifiedAt datetime,
     FOREIGN KEY (ProviderId) REFERENCES DP_Providers(ProviderId) ON DELETE CASCADE,
-	FOREIGN KEY (PatientId) REFERENCES DP_Patient(PatientId) ON DELETE CASCADE,
 );
-
 
 INSERT INTO DP_Providers (FirstName, LastName, Specialty, PhoneNo, Email, CreatedAt, ModifiedAt, Gender, NPI)
 VALUES 
@@ -175,16 +175,13 @@ Select * from DP_Patient
 
 
 INSERT INTO DP_Appointments (ProviderId, PatientId, AppointmentDate, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
-(1, 1, '2024-08-15', '09:00', '09:30', GETDATE(), GETDATE()),
-(2, 2, '2024-08-16', '10:00', '10:30', GETDATE(), GETDATE()),
-(1, 3, '2024-08-17', '11:00', '11:30', GETDATE(), GETDATE()),
-(3, 4, '2024-08-18', '14:00', '14:30', GETDATE(), GETDATE()),
-(2, 5, '2024-08-19', '15:00', '15:30', GETDATE(), GETDATE());
-Select * from DP_Appointments
+delete from DP_Appointments where EventName = 'Event 1';
+Select * from DP_Appointments;
+
 
 
 --------------------- Stored Procedure ---------------------------
-EXEC USP_DayPilot_Procedure @DayOfWeek=null,@LocationIds=null
+EXEC USP_DayPilot_Procedure @DayOfWeek='Thursday',@LocationIds='1'
 
 ALTER PROCEDURE USP_DayPilot_Procedure
     @DayOfWeek VARCHAR(12) null,
@@ -208,32 +205,13 @@ BEGIN
         p.LastName, 
         p.Specialty, 
         p.PhoneNo, 
-        p.Email
+        p.Email,
+        a.StartTime,       
+        a.EndTime
     FROM DP_Providers p
     INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
     INNER JOIN DP_Availability a ON p.ProviderId = a.ProviderId
     WHERE a.DayOfWeek = @DayOfWeek
       AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
-    ORDER BY p.ProviderId;
-
-    -- Retrieve providers with their availability, excluding busy slots
-        SELECT DISTINCT 
-            p.ProviderId,
-            p.FirstName, 
-            p.LastName, 
-            p.Specialty, 
-            p.PhoneNo, 
-            p.Email,
-            a.StartTime,       
-            a.EndTime   
-        FROM DP_Providers p
-        INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
-        INNER JOIN DP_Availability a ON p.ProviderId = a.ProviderId
-        LEFT JOIN DP_Appointments ap ON p.ProviderId = ap.ProviderId
-            AND a.StartTime < ap.EndTime
-            AND a.EndTime > ap.StartTime
-        WHERE a.DayOfWeek = @DayOfWeek
-          AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
-          AND ap.ProviderId IS NULL -- Only include availability slots with no overlapping appointments
-        ORDER BY p.ProviderId, a.StartTime; -- Ordering by provider and availability time    
+    ORDER BY p.ProviderId;    
 END;

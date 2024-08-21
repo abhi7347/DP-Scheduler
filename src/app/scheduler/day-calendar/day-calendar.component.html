@@ -1,7 +1,7 @@
 <div class="row whole-page">
     <div class="col-4 " id="left-calender">
         <div style="text-align:center;">
-            <mat-calendar [(selected)]="selectedDate"></mat-calendar>
+            <mat-calendar [(selected)]="selectedDate" (selectedChange)="onDateChange($event)"></mat-calendar>
 
             <p *ngIf="selectedDate">Selected date: {{ selectedDate | date }}</p>
         </div>
@@ -16,10 +16,10 @@
                         (change)="onParentCheckboxChange($event)">
                     <label for="parent1">{{location.LocationName}}</label>
                     <ul class="children hidden">
-                        <li *ngFor="let provider of ProvidersGroupedByLocation">
-                          <input type="checkbox" [id]="'child' + provider.FirstName" class="child-checkbox">
-                          <label [for]="'child' + provider.FirstName">{{ provider.FirstName }}</label>
-                        </li>
+                        <li *ngFor="let provider of formatedProvidersInToggle[location.LocationId] || []">
+                            <input type="checkbox" [id]="'child' + provider.ProviderId" class="child-checkbox">
+                            <label [for]="'child' + provider.ProviderId">{{ provider.FirstName }} {{ provider.LastName }}</label>
+                          </li>
                       </ul>
                 </li>
             </ul>
@@ -29,51 +29,15 @@
                 <p>Providers</p>
             </div>
             <ul>
-                <li class="tree-node">
+                <li *ngFor="let provider of uniqueProviders" class="tree-node">
                     <button class="toggle-button" (click)="toggleChildren($event)">></button>
                     <input type="checkbox" id="provider1" class="parent-checkbox"
                         (change)="onParentCheckboxChange($event)">
-                    <label for="provider1">Provider 1</label>
+                    <label for="provider1">{{provider.FirstName}} {{provider.LastName}}</label>
                     <ul class="children hidden">
-                        <li>
-                            <input type="checkbox" id="provider1-sub1" class="child-checkbox">
-                            <label for="provider1-sub1">Sub-provider 1.1</label>
-                        </li>
-                        <li>
-                            <input type="checkbox" id="provider1-sub2" class="child-checkbox">
-                            <label for="provider1-sub2">Sub-provider 1.2</label>
-                        </li>
-                    </ul>
-                </li>
-                <li class="tree-node">
-                    <button class="toggle-button" (click)="toggleChildren($event)">></button>
-                    <input type="checkbox" id="provider2" class="parent-checkbox"
-                        (change)="onParentCheckboxChange($event)">
-                    <label for="provider2">Provider 2</label>
-                    <ul class="children hidden">
-                        <li>
-                            <input type="checkbox" id="provider2-sub1" class="child-checkbox">
-                            <label for="provider2-sub1">Sub-provider 2.1</label>
-                        </li>
-                        <li>
-                            <input type="checkbox" id="provider2-sub2" class="child-checkbox">
-                            <label for="provider2-sub2">Sub-provider 2.2</label>
-                        </li>
-                    </ul>
-                </li>
-                <li class="tree-node">
-                    <button class="toggle-button" (click)="toggleChildren($event)">></button>
-                    <input type="checkbox" id="provider3" class="parent-checkbox"
-                        (change)="onParentCheckboxChange($event)">
-                    <label for="provider3">Provider 3</label>
-                    <ul class="children hidden">
-                        <li>
-                            <input type="checkbox" id="provider3-sub1" class="child-checkbox">
-                            <label for="provider3-sub1">Sub-provider 3.1</label>
-                        </li>
-                        <li>
-                            <input type="checkbox" id="provider3-sub2" class="child-checkbox">
-                            <label for="provider3-sub2">Sub-provider 3.2</label>
+                        <li *ngFor="let location of uniqueProviders">
+                          <input type="checkbox" [id]="'location' + location.LocationId" class="child-checkbox">
+                          <label [for]="'location' + location.LocationId">{{ location.LocationName }}</label>
                         </li>
                     </ul>
                 </li>

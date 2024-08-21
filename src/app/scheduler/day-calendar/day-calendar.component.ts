@@ -10,6 +10,8 @@ import { MatTreeModule } from '@angular/material/tree';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { LocationService } from '../services/location.service';
 import { ToastrService } from 'ngx-toastr';
+import { EventOperationsService } from '../services/event-operations.service';
+
 
 interface LocationNode {
   name: string;
@@ -34,18 +36,19 @@ export class DayCalendarComponent implements OnInit {
   Providers: any[] = []
   selectedDate: Date | null = null;
   selectedDayOfWeek: string = '';
-  ProvidersGroupedByLocation: any[] = [];
-  selectedColor: string = '#2e78d6'; // Default color
+  ProvidersByLocationIntoggel: any[] = [];
+  formatedProvidersInToggle: { [key: number]: any[] } = {};
 
+  selectedColor: string = '#2e78d6'; // Default color
   colorOptions: string[] = [
-    '#2e78d6', // Blue
-    '#6aa84f', // Green
-    '#f1c232', // Yellow
-    '#cc4125', // Red
-    '#808080'  // Gray
+    'blue', // Blue
+    'green', // Green
+    'yellow', // Yellow
+    'red', // Red
+    'gray'  // Gray
   ];
 
-  constructor(private locationService: LocationService, private toastr: ToastrService) { }
+  constructor(private locationService: LocationService, private toastr: ToastrService, private EventOps: EventOperationsService) { }
 
   config: DayPilot.CalendarConfig = {
     viewType: "Resources",
@@ -55,31 +58,6 @@ export class DayCalendarComponent implements OnInit {
       this.customizeCell(args);
 
     },
-    // contextMenu: new DayPilot.Menu({
-    //   items: [
-    //     {
-    //       text: "Edit...",
-    //       onClick: async args => {
-    //         const data = args.source.data;
-    //         const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
-
-    //         if (modal.canceled) {
-    //           return;
-    //         }
-
-    //         data.text = modal.result;
-    //         this.updateEventColor(data);
-    //         this.calendar.control.events.update(data);
-    //       }
-    //     },
-    //     {
-    //       text: "Delete",
-    //       onClick: args => {
-    //         this.calendar.control.events.remove(args.source);
-    //       }
-    //     }
-    //   ]
-    // }),
     onTimeRangeSelected: async args => {
       // Find the provider associated with the selected cell
       const provider = this.Providers.find(p => p.id === args.resource);
@@ -89,13 +67,26 @@ export class DayCalendarComponent implements OnInit {
         return;
       }
 
-      const cellStartTime = new Date(`1970-01-01T${args.start.toString().substring(11, 19)}`);
-      const cellEndTime = new Date(`1970-01-01T${args.end.toString().substring(11, 19)}`);
-      const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
-      const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
+      // Convert cell start and end times to DayPilot.Date objects
+      const cellStartTime = new DayPilot.Date(args.start);
+      const cellEndTime = new DayPilot.Date(args.end);
+
+      // Helper function to convert time string to minutes since midnight
+      const timeToMinutes = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      // Extract time components from provider's availability times
+      const providerStartMinutes = timeToMinutes(provider.startTime);
+      const providerEndMinutes = timeToMinutes(provider.endTime);
+
+      // Extract time components from cell's start and end times
+      const cellStartMinutes = timeToMinutes(cellStartTime.toString().substring(11, 16));
+      const cellEndMinutes = timeToMinutes(cellEndTime.toString().substring(11, 16));
 
       // Check if the selected time range is within the provider's availability
-      if (cellStartTime >= providerStartTime && cellEndTime <= providerEndTime) {
+      if (cellStartMinutes >= providerStartMinutes && cellEndMinutes <= providerEndMinutes) {
         // Prompt the user to enter event details
         const modal = await DayPilot.Modal.prompt("Create a new event:", "Event 1");
 
@@ -103,24 +94,100 @@ export class DayCalendarComponent implements OnInit {
           return;
         }
 
-        // Add the new event to the calendar
-        this.calendar.control.events.add({
-          start: args.start,
-          end: args.end,
+        // Prepare the event data to be sent to the backend
+        const eventData = {
+          start: args.start.toString(),
+          end: args.end.toString(),
           id: DayPilot.guid(),
           text: modal.result,
           resource: args.resource,
-          barColor: this.selectedColor
+          barColor: this.selectedColor,
+          AppointmentDate: this.selectedDate
+
+        };
+
+        const FormatedEventData = {
+          StartTime: eventData['start'],
+          EndTime: eventData['end'],
+          EventId: eventData.id,
+          EventName: modal.result,
+          ProviderId: args.resource,
+          BarColor: this.selectedColor,
+          AppointmentDate: this.selectedDate
+
+        };
+
+        console.log(" created EventId", FormatedEventData.EventId);
+        // Add the new event to the calendar
+        this.calendar.control.events.add(eventData);
+
+        // Send the new event to the backend
+        this.EventOps.CreateEvent(FormatedEventData).subscribe({
+          next: (res: any) => {
+            this.toastr.success("Event created successfully.");
+          },
+          error: (err) => {
+            console.error("Error:", err);
+            this.toastr.error("Failed to create event.");
+          }
         });
       } else {
         // Show an error message if the time range is outside of availability
         this.toastr.error("Selected time range is outside of provider's availability.");
       }
-    }
-    ,
-    onEventClick: async args => {
-      await this.onEventClick(args); // Call the async function
     },
+
+    onEventClick: async args => {
+      await this.onEventClick(args); // Call the  async function
+    },
+    eventMoveHandling: "Disabled",
+    eventResizeHandling: "Disabled",
+    contextMenu: new DayPilot.Menu({
+      items: [
+        {
+          text: "Edit...",
+          onClick: async args => {
+            // Retrieve the event data
+            const data = args.source.data;
+
+            // Open a modal to edit the event text
+            const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
+
+            // If the modal was canceled, exit the function
+            if (modal.canceled) {
+              return;
+            }
+
+            // Update the event's text with the new value from the modal
+            data.text = modal.result;
+
+            // Update the event in the calendar (this automatically reflects changes like text and color)
+            this.calendar.control.events.update(data);
+          }
+        },
+        {
+          text: "Delete",
+          onClick: args => {
+            // Confirm before deleting the event
+            if (confirm("Are you sure you want to delete this event?")) {
+
+              // Send delete request to the backend
+              this.EventOps.DeleteEvent(args.source.data.id).subscribe({
+                next: (res) => {
+                  // Remove the event from the calendar
+                  this.calendar.control.events.remove(args.source.data.id);
+                  this.toastr.success("Event deleted successfully.");
+                },
+                error: (err) => {
+                  this.toastr.error("Failed to delete event.");
+                }
+              })
+            }
+          }
+        }
+      ]
+    }),
+
     columns: []
   };
 
@@ -145,17 +212,120 @@ export class DayCalendarComponent implements OnInit {
   }
 
 
+  async onEventClick(args: any) {
+    // Convert color options to ModalFormOption[] with 'id', 'value', and 'text'
+    const colorOptions: { id: string; value: string; text: string }[] = this.colorOptions.map(color => ({
+      id: color, // id can be the same as value in this case
+      value: color,
+      text: color
+    }));
+    // Find the provider associated with the event's resource
+    const provider = this.Providers.find(p => p.id === args.e.data.resource);
 
+    if (!provider) {
+      this.toastr.error("No provider associated with this slot.");
+      return;
+    }
+
+    const form: DayPilot.ModalFormItem[] = [
+      { name: "Text", id: "text", type: "text" }, // Event name
+      { name: "Start Time", id: "start", type: "datetime", dateFormat: "HH:mm:ss" }, // Start time
+      { name: "End Time", id: "end", type: "datetime", dateFormat: "HH:mm:ss" }, // End time
+      { name: "Color", id: "backColor", type: "select", options: colorOptions } // Color
+    ];
+
+    const data = args.e.data;
+
+    const modal = await DayPilot.Modal.form(form, data);
+
+    if (modal.canceled) {
+      return;
+    }
+
+    // Parse selected times
+    const selectedStartTime = new DayPilot.Date(modal.result.start);
+    const selectedEndTime = new DayPilot.Date(modal.result.end);
+
+    // Helper function to convert time string to minutes since midnight
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    // Extract time components from provider's availability times
+    const providerStartMinutes = timeToMinutes(provider.startTime);
+    const providerEndMinutes = timeToMinutes(provider.endTime);
+
+    // Extract time components from selected event times
+    const selectedStartMinutes = timeToMinutes(selectedStartTime.toString().substring(11, 16));
+    const selectedEndMinutes = timeToMinutes(selectedEndTime.toString().substring(11, 16));
+
+    // Check if the selected time range is within the provider's availability
+    if (selectedStartMinutes < providerStartMinutes || selectedEndMinutes > providerEndMinutes) {
+      this.toastr.error("Selected time is outside of provider's availability.");
+      return;
+    }
+
+    // Prepare the updated event data
+    const updatedEventData = {
+      id: args.e.data.id,
+      start: selectedStartTime,
+      end: selectedEndTime,
+      text: modal.result.text,
+      resource: args.e.data.resource,
+      barColor: modal.result.backColor
+    };
+
+    console.log(" updated EventId", updatedEventData.id);
+
+
+    // Update the event in the calendar
+    this.calendar.control.events.update(updatedEventData);
+
+    const FormatedUpdatedEventData = {
+      StartTime: updatedEventData['start'].toString(),
+      EndTime: updatedEventData['end'].toString(),
+      EventId: updatedEventData.id,
+      EventName: updatedEventData.text,
+      ProviderId: updatedEventData.resource,
+      BarColor: updatedEventData.barColor,
+      AppointmentDate: this.selectedDate
+
+    };
+
+
+    // Send the updated event to the backend
+    debugger;
+    this.EventOps.UpdatEvent(FormatedUpdatedEventData).subscribe({
+      next: (res) => {
+        this.toastr.success("Event updated successfully.");
+      },
+      error: (err) => {
+        console.log("err", err);
+        this.toastr.error("Failed to update event.");
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.selectedDate = new Date(); // Set default date to today
     this.selectedDayOfWeek = this.getDayOfWeek(this.selectedDate); // Get day of week from the date
     this.GetLocations(); // Fetch locations and handle the first location being checked
+    this.ProvidersInToggle();
   }
 
   getDayOfWeek(date: Date): string {
     const options: Intl.DateTimeFormatOptions = { weekday: 'long' };
     return new Intl.DateTimeFormat('en-US', options).format(date);
+  }
+
+  //Providers fetch on Date change 
+  onDateChange(event: Date){
+    this.selectedDate = event;
+    this.selectedDayOfWeek = this.getDayOfWeek(this.selectedDate);
+    if(this.selectedDayOfWeek){
+      this.fetchProviders();
+    }
   }
 
   // Method to handle checkbox change
@@ -210,7 +380,6 @@ export class DayCalendarComponent implements OnInit {
 
   fetchProviders(): void {
     const selectedLocations = this.getCheckedLocationIds();
-
     // Fetch providers only for checked locations
     if (selectedLocations.length > 0 && this.selectedDayOfWeek) {
       this.locationService.ProvidersByLocations(this.selectedDayOfWeek, selectedLocations).subscribe({
@@ -256,34 +425,42 @@ export class DayCalendarComponent implements OnInit {
     return checkedLocationIds;
   }
 
-  /////////////////////////////////////////////////
+  ProvidersInToggle() {
+    this.locationService.providerLocationInToggle(this.selectedDayOfWeek).subscribe({
+      next: (res) => {
+        // Transform the provider data
+        this.ProvidersByLocationIntoggel = res;
+        // Create a map where each key is a LocationId and the value is a list of providers
+        this.ProvidersByLocationIntoggel.forEach(provider => {
+          if (!this.formatedProvidersInToggle[provider.LocationId]) {
+            this.formatedProvidersInToggle[provider.LocationId] = [];
+          }
+          this.formatedProvidersInToggle[provider.LocationId].push(provider);
+        });
 
-  async onEventClick(args: any) {
-    // Convert color options to ModalFormOption[] with 'id', 'value', and 'text'
-    const colorOptions: { id: string; value: string; text: string }[] = this.colorOptions.map(color => ({
-      id: color, // id can be the same as value in this case
-      value: color,
-      text: color
-    }));
-  
-    const form: DayPilot.ModalFormItem[] = [
-      { name: "Text", id: "text", type: "text" }, // Event name
-      { name: "Start Time", id: "start", type: "datetime", dateFormat: "HH:mm:ss" }, // Start time
-      { name: "End Time", id: "end", type: "datetime", dateFormat: "HH:mm:ss" }, // End time
-      { name: "Color", id: "backColor", type: "select", options: colorOptions } // Color
-    ];
-  
-    const data = args.e.data;
-  
-    const modal = await DayPilot.Modal.form(form, data);
-  
-    if (modal.canceled) {
-      return;
-    }
-  
-    const dp = args.control;
-  
-    dp.events.update(modal.result);
+        console.log('Formatted Providers by Location:', this.formatedProvidersInToggle);
+        this.toastr.success("Providers Fetched in toggle");
+        this.UniqueProvidersToggel();
+      },
+      error: (err) => {
+        this.toastr.error("Error in toggle");
+      }
+    });
   }
 
+
+  uniqueProviders: any[] = [];
+  UniqueProvidersToggel() {
+    const providerIds = new Set(); 
+    this.uniqueProviders = this.ProvidersByLocationIntoggel.filter(provider => {
+      if (!providerIds.has(provider.ProviderId)) {
+        providerIds.add(provider.ProviderId); 
+        return true;
+      }
+      return false; 
+    });
+
+    console.log("Unique Providers:", this.uniqueProviders);
+  }
+  
 }

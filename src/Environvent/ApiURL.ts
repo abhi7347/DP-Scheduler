@@ -15,3 +15,19 @@ export const locationAPIURL = {
  export const ProvidersByLocationInToggel = {
   apiUrl: 'https://localhost:7070/api/DPSchedulerContoller/ProvidersInToggleLoacion'
 };
+
+
+////////////////  Api Url For Event Operations    ////////////////
+
+export const CreateEvent = {
+  apiUrl: 'https://localhost:7070/api/EventOperations/CreateEvent'
+};
+
+export const DeleteEvent = {
+  apiUrl: 'https://localhost:7070/api/EventOperations/DeleteEvent'
+};
+
+export const UpdateEvent = {
+  apiUrl: 'https://localhost:7070/api/EventOperations/UpdateEvent'
+}
+

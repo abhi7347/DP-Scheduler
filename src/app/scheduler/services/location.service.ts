@@ -29,7 +29,8 @@ export class LocationService {
   }
 
   //Providers by locations in toggle
-  providerLocationInToggle():Observable<any>{
-    return this.http.get<any[]>(this.providersInToggle)
+  providerLocationInToggle(dayOfWeek: any): Observable<any[]> {
+    const url = `${this.providersInToggle}?dayOfWeek=${dayOfWeek}`;
+    return this.http.get<any[]>(url);
   }
 }
