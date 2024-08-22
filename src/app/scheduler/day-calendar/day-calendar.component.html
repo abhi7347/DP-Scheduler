@@ -35,7 +35,7 @@
                         (change)="onParentCheckboxChange($event)">
                     <label for="provider1">{{provider.FirstName}} {{provider.LastName}}</label>
                     <ul class="children hidden">
-                        <li *ngFor="let location of uniqueProviders">
+                        <li *ngFor="let location of LocationOfProvider[provider.ProviderId]">
                           <input type="checkbox" [id]="'location' + location.LocationId" class="child-checkbox">
                           <label [for]="'location' + location.LocationId">{{ location.LocationName }}</label>
                         </li>

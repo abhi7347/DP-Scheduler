@@ -36,9 +36,6 @@ export class DayCalendarComponent implements OnInit {
   Providers: any[] = []
   selectedDate: Date | null = null;
   selectedDayOfWeek: string = '';
-  ProvidersByLocationIntoggel: any[] = [];
-  formatedProvidersInToggle: { [key: number]: any[] } = {};
-
   selectedColor: string = '#2e78d6'; // Default color
   colorOptions: string[] = [
     'blue', // Blue
@@ -56,7 +53,6 @@ export class DayCalendarComponent implements OnInit {
     // columns: this.Providers,
     onBeforeCellRender: (args) => {
       this.customizeCell(args);
-
     },
     onTimeRangeSelected: async args => {
       // Find the provider associated with the selected cell
@@ -102,7 +98,7 @@ export class DayCalendarComponent implements OnInit {
           text: modal.result,
           resource: args.resource,
           barColor: this.selectedColor,
-          AppointmentDate: this.selectedDate
+          DayOfWeek: this.selectedDayOfWeek
 
         };
 
@@ -113,11 +109,12 @@ export class DayCalendarComponent implements OnInit {
           EventName: modal.result,
           ProviderId: args.resource,
           BarColor: this.selectedColor,
-          AppointmentDate: this.selectedDate
+          DayOfWeek: this.selectedDayOfWeek
 
         };
 
         console.log(" created EventId", FormatedEventData.EventId);
+
         // Add the new event to the calendar
         this.calendar.control.events.add(eventData);
 
@@ -144,27 +141,27 @@ export class DayCalendarComponent implements OnInit {
     eventResizeHandling: "Disabled",
     contextMenu: new DayPilot.Menu({
       items: [
-        {
-          text: "Edit...",
-          onClick: async args => {
-            // Retrieve the event data
-            const data = args.source.data;
+        // {
+        //   text: "Edit...",
+        //   onClick: async args => {
+        //     // Retrieve the event data
+        //     const data = args.source.data;
 
-            // Open a modal to edit the event text
-            const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
+        //     // Open a modal to edit the event text
+        //     const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
 
-            // If the modal was canceled, exit the function
-            if (modal.canceled) {
-              return;
-            }
+        //     // If the modal was canceled, exit the function
+        //     if (modal.canceled) {
+        //       return;
+        //     }
 
-            // Update the event's text with the new value from the modal
-            data.text = modal.result;
+        //     // Update the event's text with the new value from the modal
+        //     data.text = modal.result;
 
-            // Update the event in the calendar (this automatically reflects changes like text and color)
-            this.calendar.control.events.update(data);
-          }
-        },
+        //     // Update the event in the calendar (this automatically reflects changes like text and color)
+        //     this.calendar.control.events.update(data);
+        //   }
+        // },
         {
           text: "Delete",
           onClick: args => {
@@ -197,7 +194,6 @@ export class DayCalendarComponent implements OnInit {
       const cellStartTime = new Date(`1970-01-01T${args.cell.start.toString().substring(11, 19)}`);
       const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
       const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
-
       // Check if the cell's start time is within the provider's availability range
       if (cellStartTime >= providerStartTime && cellStartTime < providerEndTime) {
         args.cell.properties.backColor = "#ffffff"; // Light green for available time slots
@@ -229,6 +225,7 @@ export class DayCalendarComponent implements OnInit {
 
     const form: DayPilot.ModalFormItem[] = [
       { name: "Text", id: "text", type: "text" }, // Event name
+      { name: "Date", id: "date", type: "date" }, // Date for the event
       { name: "Start Time", id: "start", type: "datetime", dateFormat: "HH:mm:ss" }, // Start time
       { name: "End Time", id: "end", type: "datetime", dateFormat: "HH:mm:ss" }, // End time
       { name: "Color", id: "backColor", type: "select", options: colorOptions } // Color
@@ -266,6 +263,7 @@ export class DayCalendarComponent implements OnInit {
       return;
     }
 
+    const selectedColor = modal.result.backColor || 'defaultColor';
     // Prepare the updated event data
     const updatedEventData = {
       id: args.e.data.id,
@@ -273,14 +271,15 @@ export class DayCalendarComponent implements OnInit {
       end: selectedEndTime,
       text: modal.result.text,
       resource: args.e.data.resource,
-      barColor: modal.result.backColor
+      barColor: selectedColor
     };
-
+    debugger
     console.log(" updated EventId", updatedEventData.id);
 
 
-    // Update the event in the calendar
-    this.calendar.control.events.update(updatedEventData);
+    const SelectedDatestr = modal.result.date; // Selected date from Model
+    const SelectedDate = new Date(SelectedDatestr);
+    const EventDay = this.getDayOfWeek(SelectedDate);
 
     const FormatedUpdatedEventData = {
       StartTime: updatedEventData['start'].toString(),
@@ -289,16 +288,16 @@ export class DayCalendarComponent implements OnInit {
       EventName: updatedEventData.text,
       ProviderId: updatedEventData.resource,
       BarColor: updatedEventData.barColor,
-      AppointmentDate: this.selectedDate
-
+      DayOfWeek: EventDay
     };
 
-
     // Send the updated event to the backend
-    debugger;
     this.EventOps.UpdatEvent(FormatedUpdatedEventData).subscribe({
       next: (res) => {
         this.toastr.success("Event updated successfully.");
+        // Update the event in the calendar
+        this.calendar.control.events.update(updatedEventData);
+
       },
       error: (err) => {
         console.log("err", err);
@@ -320,12 +319,14 @@ export class DayCalendarComponent implements OnInit {
   }
 
   //Providers fetch on Date change 
-  onDateChange(event: Date){
+  onDateChange(event: Date) {
     this.selectedDate = event;
     this.selectedDayOfWeek = this.getDayOfWeek(this.selectedDate);
-    if(this.selectedDayOfWeek){
+    if (this.selectedDayOfWeek) {
       this.fetchProviders();
     }
+    this.ProvidersInToggle();
+
   }
 
   // Method to handle checkbox change
@@ -425,10 +426,14 @@ export class DayCalendarComponent implements OnInit {
     return checkedLocationIds;
   }
 
+  // Providers in toggle
+  ProvidersByLocationIntoggel: any[] = [];
+  formatedProvidersInToggle: { [key: number]: any[] } = {};
   ProvidersInToggle() {
     this.locationService.providerLocationInToggle(this.selectedDayOfWeek).subscribe({
       next: (res) => {
-        // Transform the provider data
+        // Clear the previous data to avoid showing outdated providers
+        this.formatedProvidersInToggle = {};
         this.ProvidersByLocationIntoggel = res;
         // Create a map where each key is a LocationId and the value is a list of providers
         this.ProvidersByLocationIntoggel.forEach(provider => {
@@ -450,17 +455,24 @@ export class DayCalendarComponent implements OnInit {
 
 
   uniqueProviders: any[] = [];
+  LocationOfProvider: { [key: number]: any[] } = []
   UniqueProvidersToggel() {
-    const providerIds = new Set(); 
+    this.LocationOfProvider = {};
+    const providerIds = new Set();
     this.uniqueProviders = this.ProvidersByLocationIntoggel.filter(provider => {
       if (!providerIds.has(provider.ProviderId)) {
-        providerIds.add(provider.ProviderId); 
+        providerIds.add(provider.ProviderId);
+
+        // Check if ProviderId exists in ProvidersWithLocation, if not, initialize it with an empty array
+        if (!this.LocationOfProvider[provider.ProviderId]) {
+          this.LocationOfProvider[provider.ProviderId] = [];
+        }
+        this.LocationOfProvider[provider.ProviderId].push(provider);
+
         return true;
       }
-      return false; 
+      return false;
     });
-
-    console.log("Unique Providers:", this.uniqueProviders);
   }
-  
+
 }

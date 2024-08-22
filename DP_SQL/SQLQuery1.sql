@@ -174,10 +174,9 @@ INSERT INTO DP_Patient ([Name], Gender, Age, PhoneNo, CreatedAt, ModifiedAt) VAL
 Select * from DP_Patient
 
 
-INSERT INTO DP_Appointments (ProviderId, PatientId, AppointmentDate, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
+INSERT INTO DP_Appointments (ProviderId, PatientId, DayOfWeek, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
 delete from DP_Appointments where EventName = 'Event 1';
 Select * from DP_Appointments;
-
 
 
 --------------------- Stored Procedure ---------------------------
