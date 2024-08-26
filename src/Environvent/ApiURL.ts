@@ -32,5 +32,5 @@ export const UpdateEvent = {
 }
 
 export const BookedAppointments ={
-  apiUrl: 'https://localhost:7070/api/DPSchedulerContoller/bookedAppointments'
+  apiUrl: 'https://localhost:7070/api/EventOperations/bookedAppointments'
 }

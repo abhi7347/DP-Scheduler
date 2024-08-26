@@ -71,6 +71,7 @@ CREATE TABLE DP_Appointments(
     FOREIGN KEY (ProviderId) REFERENCES DP_Providers(ProviderId) ON DELETE CASCADE,
 );
 
+
 INSERT INTO DP_Providers (FirstName, LastName, Specialty, PhoneNo, Email, CreatedAt, ModifiedAt, Gender, NPI)
 VALUES 
 ('John', 'Doe', 'Cardiology', '123-456-7890', 'john.doe@example.com', GETDATE(), GETDATE(), 'Male', '1234567890'),
@@ -119,9 +120,6 @@ VALUES
 (4, 5, GETDATE(), GETDATE()), 
 (5, 5, GETDATE(), GETDATE());
 
-
-Select * from DP_Provider_Locations
-delete from DP_Provider_Locations;
 
 
 INSERT INTO DP_Availability (ProviderId, DayOfWeek, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
@@ -174,9 +172,10 @@ INSERT INTO DP_Patient ([Name], Gender, Age, PhoneNo, CreatedAt, ModifiedAt) VAL
 Select * from DP_Patient
 
 
-INSERT INTO DP_Appointments (ProviderId, PatientId, DayOfWeek, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
+INSERT INTO DP_Appointments (ProviderId, PatientId, EventDate, StartTime, EndTime, CreatedAt, ModifiedAt) VALUES
 delete from DP_Appointments where EventName = 'Event 1';
 Select * from DP_Appointments;
+
 
 
 --------------------- Stored Procedure ---------------------------
@@ -214,3 +213,41 @@ BEGIN
       AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
     ORDER BY p.ProviderId;    
 END;
+
+
+
+    ------- Getting the Booked Appointments ------------
+EXEC USP_GetBookedAppointments @selectedDate='2024-08-23', @LocationIds='1';
+
+ALTER PROCEDURE USP_GetBookedAppointments
+    @selectedDate DATE NULL,       -- Parameter for the specific date
+    @LocationIds VARCHAR(MAX) NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Declare a table variable to store the split location IDs
+    DECLARE @LocationIdTable TABLE (LocationId INT);
+
+    -- Split the comma-separated list of location IDs into table rows
+    INSERT INTO @LocationIdTable (LocationId)
+    SELECT CAST(value AS INT)
+    FROM STRING_SPLIT(@LocationIds, ',');
+
+    -- Retrieve booked appointments based on the modified date, location, and providers
+    SELECT DISTINCT 
+        appt.ProviderId,
+        appt.StartTime AS AppointmentStartTime,
+        appt.EndTime AS AppointmentEndTime,
+        appt.EventDate As AppointmentDate,
+        appt.EventName As AppointmentName,
+        p.FirstName,
+        p.LastName
+    FROM DP_Appointments appt
+    INNER JOIN DP_Providers p ON appt.ProviderId = p.ProviderId
+    INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
+    WHERE CAST(appt.EventDate AS DATE) = @selectedDate
+      AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
+    ORDER BY appt.ProviderId, appt.StartTime;
+END;
+
