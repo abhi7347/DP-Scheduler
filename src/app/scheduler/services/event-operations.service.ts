@@ -14,6 +14,9 @@ export class EventOperationsService {
   constructor(private http: HttpClient) { }
 
   CreateEvent(eventData: any):Observable<any>{
+    if (eventData.EventDate) {
+      eventData.EventDate = eventData.EventDate.toISOString().split('T')[0];
+  }
     return this.http.post<any>(this.createEvent, eventData);
   }
 

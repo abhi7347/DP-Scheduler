@@ -11,12 +11,26 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { LocationService } from '../services/location.service';
 import { ToastrService } from 'ngx-toastr';
 import { EventOperationsService } from '../services/event-operations.service';
+import { format } from 'date-fns';
+
 
 
 interface LocationNode {
   name: string;
   children?: LocationNode[];
 }
+
+// Example appointment structure expected by the calendar
+export interface CalendarEvent {
+    id: string | number,
+    title: string,
+    start: Date | string,
+    end: Date | string,
+    color?: string,
+    textColor?: string
+}
+
+
 
 @Component({
   selector: 'app-day-calendar',
@@ -37,6 +51,7 @@ export class DayCalendarComponent implements OnInit {
   selectedDate: Date | null = null;
   selectedDayOfWeek: string = '';
   selectedColor: string = '#2e78d6'; // Default color
+  bookedAppointments: any[] = [];
   colorOptions: string[] = [
     'blue', // Blue
     'green', // Green
@@ -44,6 +59,7 @@ export class DayCalendarComponent implements OnInit {
     'red', // Red
     'gray'  // Gray
   ];
+  events: any=[];
 
   constructor(private locationService: LocationService, private toastr: ToastrService, private EventOps: EventOperationsService) { }
 
@@ -89,7 +105,6 @@ export class DayCalendarComponent implements OnInit {
         if (modal.canceled) {
           return;
         }
-
         // Prepare the event data to be sent to the backend
         const eventData = {
           start: args.start.toString(),
@@ -98,8 +113,7 @@ export class DayCalendarComponent implements OnInit {
           text: modal.result,
           resource: args.resource,
           barColor: this.selectedColor,
-          DayOfWeek: this.selectedDayOfWeek
-
+          EventDate: this.selectedDate
         };
 
         const FormatedEventData = {
@@ -109,8 +123,7 @@ export class DayCalendarComponent implements OnInit {
           EventName: modal.result,
           ProviderId: args.resource,
           BarColor: this.selectedColor,
-          DayOfWeek: this.selectedDayOfWeek
-
+          EventDate: this.selectedDate
         };
 
         console.log(" created EventId", FormatedEventData.EventId);
@@ -190,22 +203,68 @@ export class DayCalendarComponent implements OnInit {
 
   customizeCell(args: any) {
     const provider = this.Providers.find(p => p.id === args.cell.resource);
+
     if (provider) {
-      const cellStartTime = new Date(`1970-01-01T${args.cell.start.toString().substring(11, 19)}`);
-      const providerStartTime = new Date(`1970-01-01T${provider.startTime}`);
-      const providerEndTime = new Date(`1970-01-01T${provider.endTime}`);
-      // Check if the cell's start time is within the provider's availability range
-      if (cellStartTime >= providerStartTime && cellStartTime < providerEndTime) {
-        args.cell.properties.backColor = "#ffffff"; // Light green for available time slots
-      } else {
-        args.cell.properties.backColor = "#E8E8E8"; // Light grey for unavailable time slots
-        args.cell.properties.disabled = true; // Optionally disable the cell
-      }
+      console.log("ttttttttttt", args.cell.start)
+        // Convert the cell's start and end times to time in minutes since midnight
+        const cellStartTime = this.timeToMinutes(args.cell.start.toString().substring(11, 19));
+        const cellEndTime = this.timeToMinutes(args.cell.end.toString().substring(11, 19));
+        
+        // Convert provider's available start and end times to time in minutes
+        const providerStartTime = this.timeToMinutes(provider.startTime);
+        const providerEndTime = this.timeToMinutes(provider.endTime);
+
+
+        // Check if the cell is within the provider's working hours
+        if (cellStartTime >= providerStartTime && cellEndTime <= providerEndTime) {
+            let isAvailable = true;
+            let appointmentName = '';
+            // Check the booked appointments for this provider
+            for (const appointment of this.bookedAppointments) {
+                if (appointment.ProviderId === provider.id) {
+                    // Convert the appointment times to minutes
+                    const apptStartTime = this.timeToMinutes(appointment.AppointmentStartTime);
+                    const apptEndTime = this.timeToMinutes(appointment.AppointmentEndTime);
+
+                    // Log the comparison for debugging
+                    console.log(`${provider}Cell Start: ${cellStartTime}, Cell End: ${cellEndTime}`);
+                    console.log(`${appointment.ProviderId}Appt Start: ${apptStartTime}, Appt End: ${apptEndTime}`);
+                    // Check if the cell's time range matches exactly with this appointment
+                    if (cellStartTime === apptStartTime && cellEndTime === apptEndTime) {
+                        isAvailable = false;
+                        appointmentName = appointment.AppointmentName || 'Booked'; // Capture the appointment name or set a default
+                        break; // No need to check further if we found an exact match
+                    }
+                }
+            }
+
+            if (isAvailable) {
+                // Available time slots
+                args.cell.properties.backColor = "#ffffff"; // Light green for available slots
+                args.cell.properties.text = ""; // No text for available slots
+            } else {
+                // Booked time slots
+                args.cell.properties.backColor = "#ffcccc"; // Red for booked slots
+                args.cell.properties.disabled = true; // Disable the cell
+                args.cell.properties.text = appointmentName; // Show the appointment name
+            }
+        } else {
+            // Cells outside provider's working hours
+            args.cell.properties.backColor = "#E8E8E8"; // Light grey for unavailable slots
+            args.cell.properties.disabled = true; // Optionally disable the cell
+        }
     } else {
-      args.cell.properties.backColor = "#E8E8E8"; // Default white background for cells without a provider
-      args.cell.properties.disabled = true; // Optionally disable the cell
+        // Cells without a provider assigned
+        args.cell.properties.backColor = "#E8E8E8"; // Default grey for cells without a provider
+        args.cell.properties.disabled = true; // Optionally disable the cell
     }
-  }
+}
+
+// Helper function to convert time string to minutes since midnight
+private timeToMinutes(timeStr: string): number {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
 
 
   async onEventClick(args: any) {
@@ -273,9 +332,7 @@ export class DayCalendarComponent implements OnInit {
       resource: args.e.data.resource,
       barColor: selectedColor
     };
-    debugger
     console.log(" updated EventId", updatedEventData.id);
-
 
     const SelectedDatestr = modal.result.date; // Selected date from Model
     const SelectedDate = new Date(SelectedDatestr);
@@ -394,6 +451,8 @@ export class DayCalendarComponent implements OnInit {
 
           }));
 
+          this.fetchedAppointmetns();
+
           // Update DayPilot calendar configuration
           this.config.columns = this.Providers;
 
@@ -475,4 +534,48 @@ export class DayCalendarComponent implements OnInit {
     });
   }
 
+  fetchedAppointmetns() {
+    const selectedLocations = this.getCheckedLocationIds();
+
+    if (this.selectedDate) {
+      const selectedDate = this.selectedDate.toISOString().split('T')[0];
+
+      this.locationService.BookedAppointments(selectedDate, selectedLocations).subscribe({
+        next: (res) => {
+          this.bookedAppointments = res;
+
+          // Map appointments to the CalendarEvent format
+          const events = this.bookedAppointments.map(appointment => {
+            const datePart = new Date(appointment.AppointmentDate).toISOString().split('T')[0];
+            const startDate = new DayPilot.Date(`${datePart}T${appointment.AppointmentStartTime}`);
+            const endDate = new DayPilot.Date(`${datePart}T${appointment.AppointmentEndTime}`);
+            
+            console.log("dddddddd", startDate)
+
+            return {
+              id: appointment.ProviderId.toString(), // or use a unique identifier
+              text: `<div>${appointment.AppointmentName || 'No Title'}</div>
+                     <div>${startDate} - ${endDate}</div>`,
+              start: startDate.toString(), // Use DayPilot.Date's toString() for compatibility
+              end: endDate.toString(), // Use DayPilot.Date's toString() for compatibility
+              backgroundColor: '#ffcccc', // Background color for booked appointments
+              textColor: '#000000'
+            };
+        });
+
+          // Add events to the calendar
+          this.calendar.control.update({
+            events: events // Set events directly if update method is preferred
+        });
+
+        this.toastr.success("Fetched appointments");
+      },
+      error: (err) => {
+        this.toastr.error("Error fetching appointments");
+      }
+    });
+  } else {
+    this.toastr.error("Selected date is invalid.");
+  }
+}
 }
