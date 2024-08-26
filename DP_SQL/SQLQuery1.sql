@@ -60,17 +60,17 @@ CREATE TABLE DP_Patient(
 CREATE TABLE DP_Appointments(
 	AppointmentId INT PRIMARY KEY IDENTITY(1,1),
 	ProviderId int,
-  EventId int ,
+  EventId varchar(150) ,
   EventName varchar(100),
-	AppointmentDate datetime,
-	StartTime TIME NOT NULL,	
-	EndTime TIME NOT NULL,
+	AppointmentDate Date,
+	StartTime DATETIME NOT NULL,	
+	EndTime DATETIME NOT NULL,
   Color varchar(50),
 	CreatedAt datetime,
 	ModifiedAt datetime,
     FOREIGN KEY (ProviderId) REFERENCES DP_Providers(ProviderId) ON DELETE CASCADE,
 );
-
+drop table DP_Appointments
 
 INSERT INTO DP_Providers (FirstName, LastName, Specialty, PhoneNo, Email, CreatedAt, ModifiedAt, Gender, NPI)
 VALUES 
@@ -178,6 +178,8 @@ Select * from DP_Appointments;
 
 
 
+
+
 --------------------- Stored Procedure ---------------------------
 EXEC USP_DayPilot_Procedure @DayOfWeek='Thursday',@LocationIds='1'
 
@@ -217,7 +219,7 @@ END;
 
 
     ------- Getting the Booked Appointments ------------
-EXEC USP_GetBookedAppointments @selectedDate='2024-08-23', @LocationIds='1';
+EXEC USP_GetBookedAppointments @selectedDate='2024-08-26', @LocationIds='1';
 
 ALTER PROCEDURE USP_GetBookedAppointments
     @selectedDate DATE NULL,       -- Parameter for the specific date
@@ -239,15 +241,16 @@ BEGIN
         appt.ProviderId,
         appt.StartTime AS AppointmentStartTime,
         appt.EndTime AS AppointmentEndTime,
-        appt.EventDate As AppointmentDate,
+        appt.AppointmentDate,
         appt.EventName As AppointmentName,
         p.FirstName,
         p.LastName
     FROM DP_Appointments appt
     INNER JOIN DP_Providers p ON appt.ProviderId = p.ProviderId
     INNER JOIN DP_Provider_Locations pl ON p.ProviderId = pl.ProviderId
-    WHERE CAST(appt.EventDate AS DATE) = @selectedDate
+    WHERE CAST(appt.AppointmentDate AS DATE) = @selectedDate
       AND pl.LocationId IN (SELECT LocationId FROM @LocationIdTable)
+      AND ISNULL(appt.IsDeleted, 0) = 0
     ORDER BY appt.ProviderId, appt.StartTime;
 END;
 
