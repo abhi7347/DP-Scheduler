@@ -176,10 +176,6 @@ INSERT INTO DP_Appointments (ProviderId, PatientId, EventDate, StartTime, EndTim
 delete from DP_Appointments where EventName = 'Event 1';
 Select * from DP_Appointments;
 
-
-
-
-
 --------------------- Stored Procedure ---------------------------
 EXEC USP_DayPilot_Procedure @DayOfWeek='Thursday',@LocationIds='1'
 
