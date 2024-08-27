@@ -506,16 +506,17 @@ export class DayCalendarComponent implements OnInit {
   fetchedAppointmetns() {
     const selectedLocations = this.getCheckedLocationIds();
     if (this.selectedDate) {
-      const selectedDate = this.selectedDate.toISOString().split('T')[0];
+      const selectedDate = this.selectedDate.toLocaleDateString('en-CA'); // 'en-CA' will give 'YYYY-MM-DD' format
       this.locationService.BookedAppointments(selectedDate, selectedLocations).subscribe({
         next: (res) => {
           this.bookedAppointments = res;
           console.log("bookedAppointments:", this.bookedAppointments);
           // Use map to create a new array of event objects
           const events = this.bookedAppointments.map(appointment => ({
-            start: new Date(appointment.AppointmentStartTime).toISOString(),
-            end: new Date(appointment.AppointmentEndTime).toISOString(),
-            id: appointment.ProviderId.toString(),
+            start: appointment.AppointmentStartTime,
+            end: appointment.AppointmentEndTime,
+            id: appointment.AppointmentId.toString(),
+            resource:appointment.ProviderId,
             text: appointment.AppointmentName,
             barColor: '#ff0000',
             textColor: '#ffffff',
