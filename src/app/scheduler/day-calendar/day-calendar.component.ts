@@ -538,4 +538,93 @@ export class DayCalendarComponent implements OnInit {
       this.toastr.error("Selected date is invalid.");
     }
   }
+  configNavigator: DayPilot.NavigatorConfig = {
+    showMonths: 3,
+    cellWidth: 25,
+    cellHeight: 25,
+    onVisibleRangeChanged: args => {
+      // this.loadEvents();
+    }
+  };
+
+
+configWeek: DayPilot.CalendarConfig = {
+  viewType: "Week",
+  cellHeight: 40,
+  onEventClick: async args => {
+    await this.onEventClick(args); // Call the  async function
+  },
+  contextMenu: new DayPilot.Menu({
+    items: [
+      {
+        text: "Edit...",
+        onClick: async args => {
+          // Retrieve the event data
+          const data = args.source.data;
+          const modal = await DayPilot.Modal.prompt("Edit event text:", data.text);
+          if (modal.canceled) {
+            return;
+          }
+          data.text = modal.result;
+
+          // Update the event in the calendar (this automatically reflects changes like text and color)
+          // this.calendar.control.events.update(data);
+        }
+      },
+      {
+        text: "Delete",
+        onClick: args => {
+          // Confirm before deleting the event
+          if (confirm("Are you sure you want to delete this event?")) {
+
+            // Send delete request to the backend
+            this.EventOps.DeleteEvent(args.source.data.id).subscribe({
+              next: (res) => {
+                // Remove the event from the calendar
+                this.calendar.control.events.remove(args.source.data.id);
+                this.toastr.success("Event deleted successfully.");
+              },
+              error: (err) => {
+                this.toastr.error("Failed to delete event.");
+              }
+            })
+          }
+        }
+      }
+    ]
+  }),
+
+  // columns: []
+};
+
+viewDay():void {
+  this.configNavigator.selectMode = "Day";
+  this.config.visible = true;
+  this.configWeek.visible = false;
+
+}
+
+viewWeek():void {
+  this.configNavigator.selectMode = "Week";
+  this.config.visible = false;
+  this.configWeek.visible = true;
+
+}
+
+
+
+changeDate(offset: number) {
+  if (!this.selectedDate) {
+    console.warn('Selected date is not defined.');
+    return;
+  }
+
+  const newDate = new Date(this.selectedDate);
+  newDate.setDate(newDate.getDate() + offset);
+  this.selectedDate = newDate;
+}
+
+
+
+
 }

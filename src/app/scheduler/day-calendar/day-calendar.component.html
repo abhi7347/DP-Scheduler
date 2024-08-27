@@ -1,4 +1,26 @@
 <div class="row whole-page">
+  
+        <div class="status-container">
+            <div class='box light-blue'></div>Approved
+            <div class='box cyan'></div> | CheckIn |
+            <div class='box gray'></div> CheckOut |
+            <div class='box red'></div> Canceled
+            
+            <div class="status-info">
+                <div class="date-navigation">
+                    <button class="arrow" (click)="changeDate(-1)">&#9664;</button>
+                    <div class='box white' *ngIf="selectedDate">
+                        <div class="date-text"><strong>{{ selectedDate | date }}</strong></div>
+                    </div>
+                    <button class="arrow" (click)="changeDate(1)">&#9654;</button>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button (click)="viewDay()" [class]="this.configNavigator.selectMode == 'Day' ? 'selected' : ''">Day</button>
+                <button (click)="viewWeek()" [class]="this.configNavigator.selectMode == 'Week' ? 'selected' : ''">Week</button>
+            </div>
+        </div>
     <div class="col-4 " id="left-calender">
         <div style="text-align:center;">
             <mat-calendar [(selected)]="selectedDate" (selectedChange)="onDateChange($event)"></mat-calendar>
